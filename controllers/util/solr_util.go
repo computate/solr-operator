@@ -19,6 +19,10 @@ package util
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	solr "github.com/apache/solr-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,9 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -84,7 +85,7 @@ var (
 // replicas: the number of replicas for the SolrCloud instance
 // storage: the size of the storage for the SolrCloud instance (e.g. 100Gi)
 // zkConnectionString: the connectionString of the ZK instance to connect to
-func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCloudStatus, hostNameIPs map[string]string, reconcileConfigInfo map[string]string, tls *TLSCerts, security *SecurityConfig) *appsv1.StatefulSet {
+func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCloudStatus, hostNameIPs map[string]string, reconcileConfigInfo map[string]string, tls *TLSCerts, security *SecurityConfig, isOpenShift bool) *appsv1.StatefulSet {
 	terminationGracePeriod := int64(60)
 	shareProcessNamespace := false
 	solrPodPort := solrCloud.Spec.SolrAddressability.PodPort
@@ -549,18 +550,19 @@ func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCl
 				Spec: corev1.PodSpec{
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
 					ShareProcessNamespace:         &shareProcessNamespace,
-					SecurityContext: &corev1.PodSecurityContext{
-						FSGroup: &defaultFSGroup,
-					},
-					Volumes:        solrVolumes,
-					InitContainers: initContainers,
-					HostAliases:    hostAliases,
-					Containers:     containers,
-					ReadinessGates: podReadinessGates,
+					SecurityContext:               &corev1.PodSecurityContext{},
+					Volumes:                       solrVolumes,
+					InitContainers:                initContainers,
+					HostAliases:                   hostAliases,
+					Containers:                    containers,
+					ReadinessGates:                podReadinessGates,
 				},
 			},
 			VolumeClaimTemplates: pvcs,
 		},
+	}
+	if !isOpenShift {
+		stateful.Spec.Template.Spec.SecurityContext.FSGroup = &defaultFSGroup
 	}
 	if solrCloud.UsesHeadlessService() {
 		stateful.Spec.Template.Spec.Subdomain = solrCloud.HeadlessServiceName()
@@ -598,7 +600,7 @@ func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCl
 
 		if customPodOptions.PodSecurityContext != nil {
 			stateful.Spec.Template.Spec.SecurityContext = customPodOptions.PodSecurityContext
-			if stateful.Spec.Template.Spec.SecurityContext.FSGroup == nil {
+			if stateful.Spec.Template.Spec.SecurityContext.FSGroup == nil && !isOpenShift {
 				stateful.Spec.Template.Spec.SecurityContext.FSGroup = &defaultFSGroup
 			}
 		}
