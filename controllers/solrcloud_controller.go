@@ -21,12 +21,13 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
+
+	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	solrv1beta1 "github.com/apache/solr-operator/api/v1beta1"
 	"github.com/apache/solr-operator/controllers/util"
@@ -53,7 +54,8 @@ import (
 // SolrCloudReconciler reconciles a SolrCloud object
 type SolrCloudReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme      *runtime.Scheme
+	IsOpenShift bool
 }
 
 var useZkCRD bool
@@ -328,7 +330,7 @@ func (r *SolrCloudReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var statefulSet *appsv1.StatefulSet
 	if !blockReconciliationOfStatefulSet {
 		// Generate StatefulSet that should exist
-		expectedStatefulSet := util.GenerateStatefulSet(instance, &newStatus, hostNameIpMap, reconcileConfigInfo, tls, security)
+		expectedStatefulSet := util.GenerateStatefulSet(instance, &newStatus, hostNameIpMap, reconcileConfigInfo, tls, security, r.IsOpenShift)
 
 		// Check if the StatefulSet already exists
 		statefulSetLogger := logger.WithValues("statefulSet", expectedStatefulSet.Name)

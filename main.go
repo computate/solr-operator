@@ -22,18 +22,19 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"github.com/apache/solr-operator/controllers/util/solr_api"
-	"github.com/apache/solr-operator/version"
-	"github.com/fsnotify/fsnotify"
-	zkApi "github.com/pravega/zookeeper-operator/api/v1beta1"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+
+	"github.com/apache/solr-operator/controllers/util/solr_api"
+	"github.com/apache/solr-operator/version"
+	"github.com/fsnotify/fsnotify"
+	zkApi "github.com/pravega/zookeeper-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -198,9 +199,26 @@ func main() {
 		}
 	}
 
+	// Fetch k8s api credentials and detect platform
+	restConfig := ctrl.GetConfigOrDie()
+
+	autodetect, err := controllers.NewAutodetect(restConfig)
+	if err != nil {
+		setupLog.Error(err, "failed to setup auto-detect routine")
+		os.Exit(1)
+	}
+
+	isOpenShift, err := autodetect.IsOpenshift()
+	setupLog.Info("autodetect", "isOpenShift", isOpenShift)
+	if err != nil {
+		setupLog.Error(err, "unable to detect the platform")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.SolrCloudReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		IsOpenShift: isOpenShift,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SolrCloud")
 		os.Exit(1)
