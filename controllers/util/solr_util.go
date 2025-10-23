@@ -19,6 +19,10 @@ package util
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	solr "github.com/apache/solr-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,9 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -70,7 +71,7 @@ var (
 // replicas: the number of replicas for the SolrCloud instance
 // storage: the size of the storage for the SolrCloud instance (e.g. 100Gi)
 // zkConnectionString: the connectionString of the ZK instance to connect to
-func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCloudStatus, hostNameIPs map[string]string, reconcileConfigInfo map[string]string, tls *TLSCerts, security *SecurityConfig) *appsv1.StatefulSet {
+func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCloudStatus, hostNameIPs map[string]string, reconcileConfigInfo map[string]string, tls *TLSCerts, security *SecurityConfig, isOpenShift bool) *appsv1.StatefulSet {
 	terminationGracePeriod := int64(60)
 	solrPodPort := solrCloud.Spec.SolrAddressability.PodPort
 	fsGroup := int64(DefaultSolrGroup)
@@ -480,17 +481,18 @@ func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCl
 
 				Spec: corev1.PodSpec{
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
-					SecurityContext: &corev1.PodSecurityContext{
-						FSGroup: &fsGroup,
-					},
-					Volumes:        solrVolumes,
-					InitContainers: initContainers,
-					HostAliases:    hostAliases,
-					Containers:     containers,
+					SecurityContext:               &corev1.PodSecurityContext{},
+					Volumes:                       solrVolumes,
+					InitContainers:                initContainers,
+					HostAliases:                   hostAliases,
+					Containers:                    containers,
 				},
 			},
 			VolumeClaimTemplates: pvcs,
 		},
+	}
+	if !isOpenShift {
+		stateful.Spec.Template.Spec.SecurityContext.FSGroup = &fsGroup
 	}
 
 	var imagePullSecrets []corev1.LocalObjectReference
@@ -1106,6 +1108,7 @@ func generateZKInteractionInitContainer(solrCloud *solr.SolrCloud, solrCloudStat
 		corev1.ResourceMemory: *DefaultSolrZKPrepInitContainerMemory,
 	}
 	if cmd != "" {
+		falseBool := false
 		return true, corev1.Container{
 			Name:                     "setup-zk",
 			Image:                    solrCloud.Spec.SolrImage.ToImageName(),
@@ -1114,6 +1117,9 @@ func generateZKInteractionInitContainer(solrCloud *solr.SolrCloud, solrCloudStat
 			TerminationMessagePolicy: "File",
 			Command:                  []string{"sh", "-c", cmd},
 			Env:                      envVars,
+			SecurityContext: &corev1.SecurityContext{
+				ReadOnlyRootFilesystem: &falseBool,
+			},
 			Resources: corev1.ResourceRequirements{
 				Requests: zkSetupResources,
 				Limits:   zkSetupResources,

@@ -101,6 +101,7 @@ var _ = BeforeSuite(func() {
 	Expect((&SolrCloudReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
+		IsOpenShift: false,
 	}).SetupWithManager(k8sManager)).To(Succeed())
 
 	Expect((&SolrPrometheusExporterReconciler{

@@ -54,6 +54,7 @@ import (
 type SolrCloudReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	IsOpenShift bool
 }
 
 var useZkCRD bool
@@ -316,7 +317,7 @@ func (r *SolrCloudReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if !blockReconciliationOfStatefulSet {
 		// Generate StatefulSet
-		statefulSet := util.GenerateStatefulSet(instance, &newStatus, hostNameIpMap, reconcileConfigInfo, tls, security)
+		statefulSet := util.GenerateStatefulSet(instance, &newStatus, hostNameIpMap, reconcileConfigInfo, tls, security, r.IsOpenShift)
 
 		// Check if the StatefulSet already exists
 		statefulSetLogger := logger.WithValues("statefulSet", statefulSet.Name)
