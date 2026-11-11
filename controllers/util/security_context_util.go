@@ -61,17 +61,19 @@ var operatorContainers = map[string]operatorContainerOptions{
 // left unset in the podOptions. The seccomp profile is set once here rather than on every container.
 // fsGroup is not part of the profile, it is the long-standing default that makes the volumes writable
 // for Solr, left out when the user asks for omitDefaultIDs.
-func defaultPodSecurityContext(podOptions *solr.PodOptions, defaultFSGroup int64) *corev1.PodSecurityContext {
+func defaultPodSecurityContext(podOptions *solr.PodOptions, defaultFSGroup int64, isOpenShift bool) *corev1.PodSecurityContext {
 	securityContext := &corev1.PodSecurityContext{}
-	if podOptions != nil && podOptions.PodSecurityContext != nil {
-		securityContext = podOptions.PodSecurityContext.DeepCopy()
-	}
+	if !isOpenShift {
+		if podOptions != nil && podOptions.PodSecurityContext != nil {
+			securityContext = podOptions.PodSecurityContext.DeepCopy()
+		}
 
-	if securityContext.SeccompProfile == nil {
-		securityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}
-	}
-	if securityContext.FSGroup == nil && !omitsDefaultIDs(podOptions) {
-		securityContext.FSGroup = ptr.To(defaultFSGroup)
+		if securityContext.SeccompProfile == nil {
+			securityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}
+		}
+		if securityContext.FSGroup == nil && !omitsDefaultIDs(podOptions) {
+			securityContext.FSGroup = ptr.To(defaultFSGroup)
+		}
 	}
 
 	return securityContext

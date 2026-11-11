@@ -85,7 +85,7 @@ var (
 // replicas: the number of replicas for the SolrCloud instance
 // storage: the size of the storage for the SolrCloud instance (e.g. 100Gi)
 // zkConnectionString: the connectionString of the ZK instance to connect to
-func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCloudStatus, hostNameIPs map[string]string, reconcileConfigInfo map[string]string, tls *TLSCerts, security *SecurityConfig) *appsv1.StatefulSet {
+func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCloudStatus, hostNameIPs map[string]string, reconcileConfigInfo map[string]string, tls *TLSCerts, security *SecurityConfig, isOpenShift bool) *appsv1.StatefulSet {
 	terminationGracePeriod := int64(60)
 	shareProcessNamespace := false
 	var enableServiceLinks *bool
@@ -560,7 +560,7 @@ func GenerateStatefulSet(solrCloud *solr.SolrCloud, solrCloudStatus *solr.SolrCl
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
 					ShareProcessNamespace:         &shareProcessNamespace,
 					EnableServiceLinks:            enableServiceLinks,
-					SecurityContext:               defaultPodSecurityContext(customPodOptions, defaultFSGroup),
+					SecurityContext:               defaultPodSecurityContext(customPodOptions, defaultFSGroup, isOpenShift),
 					Volumes:                       solrVolumes,
 					InitContainers:                initContainers,
 					HostAliases:                   hostAliases,

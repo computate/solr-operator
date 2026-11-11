@@ -19,12 +19,13 @@ package controllers
 
 import (
 	"context"
-	"github.com/go-logr/logr"
-	zkApi "github.com/pravega/zookeeper-operator/api/v1beta1"
 	"path/filepath"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 	"time"
+
+	"github.com/go-logr/logr"
+	zkApi "github.com/pravega/zookeeper-operator/api/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -106,9 +107,10 @@ var _ = BeforeSuite(func(ctx context.Context) {
 	// Start up Reconcilers
 	By("starting the reconcilers")
 	Expect((&SolrCloudReconciler{
-		Client:   k8sManager.GetClient(),
-		Scheme:   k8sManager.GetScheme(),
-		Recorder: k8sManager.GetEventRecorderFor("solr-operator"),
+		Client:      k8sManager.GetClient(),
+		Scheme:      k8sManager.GetScheme(),
+		Recorder:    k8sManager.GetEventRecorderFor("solr-operator"),
+		IsOpenShift: false,
 	}).SetupWithManager(k8sManager)).To(Succeed())
 
 	Expect((&SolrPrometheusExporterReconciler{

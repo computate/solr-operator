@@ -49,7 +49,7 @@ type SolrConnectionInfo struct {
 
 // GenerateSolrPrometheusExporterDeployment returns a new appsv1.Deployment pointer generated for the SolrCloud Prometheus Exporter instance
 // solrPrometheusExporter: SolrPrometheusExporter instance
-func GenerateSolrPrometheusExporterDeployment(solrPrometheusExporter *solr.SolrPrometheusExporter, solrConnectionInfo SolrConnectionInfo, solrCloudImage *solr.ContainerImage, configXmlMd5 string, tls *TLSCerts, basicAuthMd5 string) *appsv1.Deployment {
+func GenerateSolrPrometheusExporterDeployment(solrPrometheusExporter *solr.SolrPrometheusExporter, solrConnectionInfo SolrConnectionInfo, solrCloudImage *solr.ContainerImage, configXmlMd5 string, tls *TLSCerts, basicAuthMd5 string, isOpenShift bool) *appsv1.Deployment {
 	gracePeriodTerm := int64(10)
 	singleReplica := int32(1)
 	fsGroup := int64(SolrMetricsPort)
@@ -295,7 +295,7 @@ func GenerateSolrPrometheusExporterDeployment(solrPrometheusExporter *solr.SolrP
 				},
 				Spec: corev1.PodSpec{
 					TerminationGracePeriodSeconds: &gracePeriodTerm,
-					SecurityContext:               defaultPodSecurityContext(customPodOptions, fsGroup),
+					SecurityContext:               defaultPodSecurityContext(customPodOptions, fsGroup, isOpenShift),
 					Volumes:                       solrVolumes,
 					InitContainers:                initContainers,
 					Containers:                    containers,

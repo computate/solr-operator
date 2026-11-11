@@ -157,7 +157,7 @@ func TestGeneratedPrometheusExporterPodsSatisfyRestrictedProfile(t *testing.T) {
 	}
 
 	t.Run("default", func(t *testing.T) {
-		deployment := GenerateSolrPrometheusExporterDeployment(exporterWithDefaults(), SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", nil, "")
+		deployment := GenerateSolrPrometheusExporterDeployment(exporterWithDefaults(), SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", nil, "", false)
 		expectRestrictedProfile(t, &deployment.Spec.Template, "The default Prometheus exporter pod")
 	})
 
@@ -167,7 +167,7 @@ func TestGeneratedPrometheusExporterPodsSatisfyRestrictedProfile(t *testing.T) {
 			MountedTLSDir: &solr.MountedTLSDirectory{Path: "/var/solr/tls"},
 		}
 		tls := TLSCertsForExporter(exporter)
-		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", tls, "")
+		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", tls, "", false)
 
 		initContainerNames := containerNames(deployment.Spec.Template.Spec.InitContainers)
 		assert.Contains(t, initContainerNames, TLSWrapperScriptInitContainer, "The TLS wrapper script init container should be generated")
@@ -189,7 +189,7 @@ func TestGeneratedPrometheusExporterPodsSatisfyRestrictedProfile(t *testing.T) {
 		tls := TLSCertsForExporter(exporter)
 		// Force the keystore conversion init container, the exporter's other generated container
 		tls.ClientConfig.NeedsPkcs12InitContainer = true
-		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", tls, "")
+		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", tls, "", false)
 
 		initContainerNames := containerNames(deployment.Spec.Template.Spec.InitContainers)
 		assert.Contains(t, initContainerNames, Pkcs12InitContainer, "The keystore conversion init container should be generated")
@@ -197,7 +197,7 @@ func TestGeneratedPrometheusExporterPodsSatisfyRestrictedProfile(t *testing.T) {
 	})
 
 	t.Run("the exporter container is hardened and overridable", func(t *testing.T) {
-		deployment := GenerateSolrPrometheusExporterDeployment(exporterWithDefaults(), SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", nil, "")
+		deployment := GenerateSolrPrometheusExporterDeployment(exporterWithDefaults(), SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", nil, "", false)
 		exporterContainer := findContainer(t, deployment.Spec.Template.Spec.Containers, SolrPrometheusExporterContainer)
 		assert.True(t, *exporterContainer.SecurityContext.RunAsNonRoot, "The exporter container should run as non-root")
 		assert.Equal(t, []corev1.Capability{"ALL"}, exporterContainer.SecurityContext.Capabilities.Drop, "The exporter container should drop all capabilities")
@@ -206,7 +206,7 @@ func TestGeneratedPrometheusExporterPodsSatisfyRestrictedProfile(t *testing.T) {
 		overridden.Spec.CustomKubeOptions.PodOptions = &solr.PodOptions{
 			ContainerSecurityContext: &corev1.SecurityContext{RunAsNonRoot: ptr.To(false)},
 		}
-		deployment = GenerateSolrPrometheusExporterDeployment(overridden, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", nil, "")
+		deployment = GenerateSolrPrometheusExporterDeployment(overridden, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", nil, "", false)
 		exporterContainer = findContainer(t, deployment.Spec.Template.Spec.Containers, SolrPrometheusExporterContainer)
 		assert.False(t, *exporterContainer.SecurityContext.RunAsNonRoot, "The provided runAsNonRoot should reach the exporter container")
 		assert.Equal(t, []corev1.Capability{"ALL"}, exporterContainer.SecurityContext.Capabilities.Drop, "The other defaults should still apply to the exporter container")
@@ -281,7 +281,7 @@ func TestInitContainerOverrideReachesTheTLSInitContainers(t *testing.T) {
 		}
 		exporter.Spec.CustomKubeOptions.PodOptions = &solr.PodOptions{DefaultInitContainerSecurityContext: provided}
 		exporter.WithDefaults()
-		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", TLSCertsForExporter(exporter), "")
+		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", TLSCertsForExporter(exporter), "", false)
 
 		initContainer := findContainer(t, deployment.Spec.Template.Spec.InitContainers, TLSWrapperScriptInitContainer)
 		assert.Equal(t, int64(4321), *initContainer.SecurityContext.RunAsUser, "The override should reach the TLS wrapper script init container")
@@ -546,7 +546,7 @@ func TestOmitDefaultIDsLeavesTheIDsToThePlatform(t *testing.T) {
 		}
 		exporter.Spec.CustomKubeOptions.PodOptions = &solr.PodOptions{OmitDefaultIDs: true}
 		exporter.WithDefaults()
-		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", TLSCertsForExporter(exporter), "")
+		deployment := GenerateSolrPrometheusExporterDeployment(exporter, SolrConnectionInfo{StandaloneAddress: "http://localhost:8983/solr"}, nil, "", TLSCertsForExporter(exporter), "", false)
 		podSpec := deployment.Spec.Template.Spec
 
 		assert.Nil(t, podSpec.SecurityContext.FSGroup, "No fsGroup should be set on the exporter pod, as the platform assigns the group")

@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+
 	"github.com/apache/solr-operator/controllers/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,8 +45,9 @@ import (
 // SolrPrometheusExporterReconciler reconciles a SolrPrometheusExporter object
 type SolrPrometheusExporterReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Scheme      *runtime.Scheme
+	Recorder    record.EventRecorder
+	IsOpenShift bool
 }
 
 //+kubebuilder:rbac:groups=,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -212,7 +214,7 @@ func (r *SolrPrometheusExporterReconciler) Reconcile(ctx context.Context, req ct
 		basicAuthMd5 = fmt.Sprintf("%x", md5.Sum([]byte(creds)))
 	}
 
-	deploy := util.GenerateSolrPrometheusExporterDeployment(prometheusExporter, solrConnectionInfo, solrCloudImage, configXmlMd5, tls, basicAuthMd5)
+	deploy := util.GenerateSolrPrometheusExporterDeployment(prometheusExporter, solrConnectionInfo, solrCloudImage, configXmlMd5, tls, basicAuthMd5, r.IsOpenShift)
 
 	ready := false
 	// Check if the Metrics Deployment already exists
